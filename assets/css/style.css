@@ -1,0 +1,35 @@
+*,
+html {
+  margin: 0;
+  box-sizing: border-box;
+  font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande',
+    'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+}
+
+body {
+  background-color: aliceblue;
+}
+
+.container {
+  max-width: 1080px;
+  padding: 2em;
+  margin: 0 auto;
+}
+
+ul {
+  list-style: none;
+}
+
+.todo {
+  font-size: 18px;
+  padding: 1em;
+  background-color: antiquewhite;
+  margin: 1em 0;
+  border-radius: 0.3em;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.12);
+}
+
+.todo.done {
+  color: red;
+  text-decoration: line-through;
+}
