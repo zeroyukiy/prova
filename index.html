@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
   </head>
-  <body></body>
+  <body>
+    <div class="container">
+      {{ range .Films }}
+      <div class="film">
+        <p><h3>{{ .Title }}</h3></p>
+        <p>{{ .Description }}</p>
+        <p>{{ .ReleaseYear }}</p>
+      </div>
+      {{ end }}
+    </div>
+  </body>
 </html>

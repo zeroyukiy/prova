@@ -2,8 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"text/template"
@@ -29,6 +27,18 @@ type Actor struct {
 	LastUpdate *time.Time `mysql:"last_update"`
 }
 
+type Film struct {
+	ID          int    `mysql:"film_id"`
+	Title       string `mysql:"title"`
+	Description string `mysql:"description"`
+	ReleaseYear int    `mysql:"release_year"`
+}
+
+type ViewFilm struct {
+	Title string
+	Films []Film
+}
+
 func main() {
 	db, err := sql.Open("mysql", "root:root@tcp(127.0.0.1:3306)/sakila?parseTime=true")
 	if err != nil {
@@ -37,46 +47,47 @@ func main() {
 	defer db.Close()
 
 	mux := http.NewServeMux()
-	fs := http.FileServer(http.Dir("assets/"))
+	fs := http.FileServer(http.Dir("./assets/"))
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
-	tmpl, err := template.ParseFiles("todo-list.html")
-	if err != nil {
-		log.Println(err)
-	}
-
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		tmpl, err := template.ParseFiles("index.html")
+		if err != nil {
+			log.Println(err)
+		}
 
-		query := `SELECT actor_id, first_name, last_name, last_update FROM actor WHERE actor_id = ?`
-		// err := db.QueryRow(query, 1).Scan(&actor.ID, &actor.FirstName, &actor.LastName, &actor.LastUpdate)
+		query := `SELECT f.film_id, f.title, f.description, f.release_year FROM actor a INNER JOIN film_actor fa ON fa.actor_id = a.actor_id INNER JOIN film f ON f.film_id = fa.film_id WHERE a.actor_id = ?`
+
 		res, err := db.Query(query, 1)
 		if err != nil {
 			log.Println(err)
 		}
 		defer res.Close()
 
-		if res.Next() {
-			var actor Actor
-			err := res.Scan(&actor.ID, &actor.FirstName, &actor.LastName, &actor.LastUpdate)
+		var films []Film
+		for res.Next() {
+			var film Film
+			err := res.Scan(&film.ID, &film.Title, &film.Description, &film.ReleaseYear)
 			if err != nil {
 				log.Println(err)
 			}
-
-			fmt.Printf("Actor: %+v", &actor)
-
-			data, err := json.Marshal(&actor)
-			if err != nil {
-				log.Println(err)
-			}
-
-			w.Write(data)
+			films = append(films, film)
 		}
+
+		view := ViewFilm{
+			Title: "Films",
+			Films: films,
+		}
+
+		tmpl.Execute(w, view)
 	})
 
 	mux.HandleFunc("/todos", func(w http.ResponseWriter, r *http.Request) {
-		// http.ServeFile(w, r, "index.html")
+		tmpl, err := template.ParseFiles("todo-list.html")
+		if err != nil {
+			log.Println(err)
+		}
+
 		todos := TodoPageData{
 			Title: "Todos List",
 			Todos: []Todo{
