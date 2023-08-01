@@ -2,12 +2,17 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"prova/handler"
+	"prova/repository"
 	"text/template"
-	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/labstack/echo/v4"
 )
 
 type Todo struct {
@@ -20,93 +25,105 @@ type TodoPageData struct {
 	Todos []Todo
 }
 
-type Actor struct {
-	ID         int        `mysql:"actor_id"`
-	FirstName  string     `mysql:"first_name"`
-	LastName   string     `mysql:"last_name"`
-	LastUpdate *time.Time `mysql:"last_update"`
+type Template struct {
+	templates *template.Template
 }
 
-type Film struct {
-	ID          int    `mysql:"film_id"`
-	Title       string `mysql:"title"`
-	Description string `mysql:"description"`
-	ReleaseYear int    `mysql:"release_year"`
-}
-
-type ViewFilm struct {
-	Title string
-	Films []Film
+func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	return t.templates.ExecuteTemplate(w, name, data)
 }
 
 func main() {
+	t := &Template{
+		templates: template.Must(template.ParseGlob("public/views/*.html")),
+	}
+
 	db, err := sql.Open("mysql", "root:root@tcp(127.0.0.1:3306)/sakila?parseTime=true")
 	if err != nil {
 		log.Println(err)
 	}
 	defer db.Close()
 
-	mux := http.NewServeMux()
-	fs := http.FileServer(http.Dir("./assets/"))
-	mux.Handle("/static/", http.StripPrefix("/static/", fs))
+	if err = db.Ping(); err != nil {
+		panic(err)
+	} else {
+		fmt.Println("DB Connected...")
+	}
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFiles("index.html")
+	actorHandler := handler.Handler{
+		Repository: &repository.ActorRepository{
+			DB:  db,
+			Log: *log.Default(),
+		},
+	}
+
+	e := echo.New()
+	e.Static("/static", "assets")
+	e.Renderer = t
+	e.GET("/actors/", actorHandler.GetAll)
+	e.POST("/addfilm", addFilm)
+
+	e.GET("/todos", showTodos)
+
+	e.Logger.Fatal(e.Start(":8000"))
+}
+
+func addFilm(c echo.Context) error {
+	if c.Request().Method != http.MethodPost {
+		d, err := json.Marshal(struct {
+			Status int
+			Error  string
+		}{
+			Status: http.StatusOK,
+			Error:  "method is not POST",
+		})
 		if err != nil {
 			log.Println(err)
 		}
 
-		query := `SELECT f.film_id, f.title, f.description, f.release_year FROM actor a INNER JOIN film_actor fa ON fa.actor_id = a.actor_id INNER JOIN film f ON f.film_id = fa.film_id WHERE a.actor_id = ?`
-
-		res, err := db.Query(query, 1)
-		if err != nil {
-			log.Println(err)
+		return c.JSON(http.StatusBadRequest, d)
+	} else {
+		var filmForm struct {
+			Title       string
+			Description string
 		}
-		defer res.Close()
+		filmForm.Title = c.FormValue("title")
+		filmForm.Description = c.FormValue("description")
 
-		var films []Film
-		for res.Next() {
-			var film Film
-			err := res.Scan(&film.ID, &film.Title, &film.Description, &film.ReleaseYear)
-			if err != nil {
-				log.Println(err)
-			}
-			films = append(films, film)
-		}
+		fmt.Println(filmForm)
+		// d, err := json.Marshal(filmForm)
+		// if err != nil {
+		// 	log.Println(err)
+		// }
 
-		view := ViewFilm{
-			Title: "Films",
-			Films: films,
-		}
+		// a := fmt.Sprintf(`<h2 style="color:red;">%s</h2>
+		// <p>%s</p>`, filmForm.Title, filmForm.Description)
 
-		tmpl.Execute(w, view)
-	})
+		// b := c.Render(http.StatusOK, "index.html", filmForm)
 
-	mux.HandleFunc("/todos", func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFiles("todo-list.html")
-		if err != nil {
-			log.Println(err)
-		}
+		return c.Render(http.StatusOK, "a.html", filmForm)
 
-		todos := TodoPageData{
-			Title: "Todos List",
-			Todos: []Todo{
-				{
-					Title: "Fare la spesa",
-					Done:  true,
-				},
-				{
-					Title: "Correre 5 km",
-					Done:  true,
-				},
-				{
-					Title: "Andare al cinema",
-					Done:  false,
-				},
+		// return c.String(http.StatusOK, a)
+	}
+}
+
+func showTodos(c echo.Context) error {
+	todos := TodoPageData{
+		Title: "Todos List",
+		Todos: []Todo{
+			{
+				Title: "Fare la spesa",
+				Done:  true,
 			},
-		}
-		tmpl.Execute(w, todos)
-	})
-
-	log.Fatal(http.ListenAndServe(":8000", mux))
+			{
+				Title: "Correre 5 km",
+				Done:  true,
+			},
+			{
+				Title: "Andare al cinema",
+				Done:  false,
+			},
+		},
+	}
+	return c.Render(http.StatusOK, "todo-list.html", todos)
 }
