@@ -1,17 +1,18 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"prova/handler"
+	"prova/mailer"
 	"prova/repository"
 	"text/template"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 )
 
@@ -38,7 +39,7 @@ func main() {
 		templates: template.Must(template.ParseGlob("public/views/*.html")),
 	}
 
-	db, err := sql.Open("mysql", "root:root@tcp(127.0.0.1:3306)/sakila?parseTime=true")
+	db, err := sqlx.Open("mysql", "root:root@tcp(127.0.0.1:3306)/sakila?parseTime=true")
 	if err != nil {
 		log.Println(err)
 	}
@@ -55,12 +56,14 @@ func main() {
 			DB:  db,
 			Log: *log.Default(),
 		},
+		Mailer: mailer.NewMailer(),
 	}
 
 	e := echo.New()
 	e.Static("/static", "assets")
 	e.Renderer = t
-	e.GET("/actors/", actorHandler.GetAll)
+	e.GET("/actors", actorHandler.GetAll)
+	e.GET("/actors/:id", actorHandler.Get)
 	e.POST("/addfilm", addFilm)
 
 	e.GET("/todos", showTodos)
