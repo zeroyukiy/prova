@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"log"
 	"prova/model"
 
@@ -41,8 +42,19 @@ func (ar *ActorRepository) Get(id int) (interface{}, error) {
 	var actor model.Actor
 	err := ar.DB.QueryRowx(query, id).StructScan(&actor)
 	if err != nil {
-		ar.Log.Fatal(err)
+		ar.Log.Println(err)
+		return nil, err
 	}
 
 	return actor, nil
+}
+
+func (ar *ActorRepository) Create(actor interface{}) (interface{}, error) {
+	fmt.Println("aaaa", actor)
+	query := `INSERT INTO actor (first_name, last_name) VALUES (:first_name, :last_name)`
+	_ , err := ar.DB.NamedExec(query, actor)
+	if err != nil {
+		ar.Log.Fatal(err)
+	}
+	return nil, nil
 }
