@@ -3,29 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <title>{{ .Title }}</title>
     <link rel="stylesheet" href="/static/css/style.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.4" integrity="sha384-zUfuhFKKZCbHTY6aRR46gxiqszMk5tcHjsVFxnUo8VMus4kHGVdIYVbOYYNlKmHV" crossorigin="anonymous"></script>
+    <script
+      src="https://unpkg.com/htmx.org@1.9.4"
+      integrity="sha384-zUfuhFKKZCbHTY6aRR46gxiqszMk5tcHjsVFxnUo8VMus4kHGVdIYVbOYYNlKmHV"
+      crossorigin="anonymous"
+    ></script>
   </head>
   <body>
     <div class="container">
-      <form hx-post="/addfilm" hx-target="#t" hx-swap="beforeend">
-        <input type="text" name="title">
-        <input type="text" name="description">
-        <input type="submit" value="Crea">
-      </form>
-
-      <div id="t">
-        <p>aaaa</p>
-      </div>
-
-      {{ range .Films }}
-      <div class="film">
-        <p><h3>{{ .Title }}</h3></p>
-        <p>{{ .Description }}</p>
-        <p>{{ .ReleaseYear }}</p>
-      </div>
-      {{ end }}
+      <h1 id="title">{{ .Title }}</h1>
+      <a href="#" hx-get="/get-text" hx-trigger="click" hx-target="#title"
+        >Get started</a
+      >
     </div>
   </body>
 </html>

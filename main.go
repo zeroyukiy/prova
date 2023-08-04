@@ -62,6 +62,17 @@ func main() {
 	e := echo.New()
 	e.Static("/static", "assets")
 	e.Renderer = t
+	e.GET("/", func(c echo.Context) error {
+		data := struct{
+			Title string
+		}{
+			Title: "HomePage",
+		}
+		return c.Render(http.StatusOK, "index.html", data)
+	})
+	e.GET("/get-text", func(c echo.Context) error {
+		return c.Render(http.StatusOK, "get_text.html", "")
+	})
 	e.GET("/actors", actorHandler.GetAll)
 	e.GET("/actors/:id", actorHandler.Get)
 	e.POST("/addfilm", addFilm)
